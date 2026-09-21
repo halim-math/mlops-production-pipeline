@@ -1,0 +1,30 @@
+name: Model Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      data_path:
+        description: Versioned training dataset path
+        required: true
+        default: data/processed/train.csv
+
+permissions:
+  contents: read
+
+jobs:
+  validate-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Reproduce training candidate
+        run: python -m mlops_pipeline.training.train --config configs/training.yaml --data "${{ inputs.data_path }}"
+      - name: Verify generated evidence
+        run: test -f artifacts/model.joblib && test -f artifacts/metrics.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: model-validation-evidence
+          path: artifacts/metrics.json
